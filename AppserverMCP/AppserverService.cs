@@ -1,4 +1,6 @@
 using AppserverMCP.Interfaces;
+using System.ComponentModel.DataAnnotations;
+using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -21,6 +23,83 @@ public class AppserverService
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
+    public async Task<bool> PutUserCurrencyAsync(int userId, string defaultCurrency)
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            // 1. Get current user settings
+            var currentSettings = await GetUserSettings(userId);
+            if (currentSettings == null)
+            {
+                _logger.LogError("Cannot update currency: failed to fetch current user settings for user {UserId}", userId);
+                return false;
+            }
+
+            // 2. Map UserSettingsResponse to ModifyUserSettingsView
+            var modifyView = new ModifyUserSettingsView
+            {
+                default_language = currentSettings.DefaultLanguage,
+                default_currency = defaultCurrency, // update only currency
+                client_settings = currentSettings.ClientSettings,
+                default_export_lines = currentSettings.DefaultExportLines,
+                sap_fields_in_chooser = currentSettings.SapFieldsInChooser,
+                sap_fields_in_header = currentSettings.SapFieldsInHeader,
+                manual_insert_column = currentSettings.ManualInsertColumn,
+                compressed_list_header = currentSettings.CompressedListHeader,
+                compressed_bp_bar = currentSettings.CompressedBpBar,
+                default_business_processes = currentSettings.DefaultBusinessProcesses,
+                auto_execute_items_on_login = currentSettings.AutoExecuteItemsOnLogin,
+                // The following property is not present in UserSettingsResponse, set to null or as needed
+                auto_execute_last_search = null,
+                format_locale = currentSettings.FormatLocale,
+                format_numbers = currentSettings.FormatNumbers,
+                format_currencies = currentSettings.FormatCurrencies,
+                format_percentages = currentSettings.FormatPercentages,
+                format_enum = currentSettings.FormatEnum,
+                format_date = currentSettings.FormatDate,
+                format_period = currentSettings.FormatPeriod,
+                format_time = currentSettings.FormatTime,
+                hide_other_users_private_display = currentSettings.HideOtherUsersPrivateDisplay
+            };
+
+            // 3. Send PUT request
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"{_baseUrl}/users/{userId}/settings")
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(modifyView),
+                    System.Text.Encoding.UTF8,
+                    "application/json")
+            };
+
+            var accessToken = await _platformService.GetAccessTokenAsync();
+            request.Headers.Add("A4SAuthorization", accessToken);
+            request.Headers.Add("ROPC", "true");
+
+            response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            _logger.LogInformation("Successfully updated user currency for user {UserId}", userId);
+            return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            var errorResponse = response != null ? await response.Content.ReadAsStringAsync() : string.Empty;
+            _logger.LogError(ex, $"Failed to update user currency: {errorResponse}");
+            return false;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request to Appserver for updating user currency timed out");
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to serialize user currency payload");
+            return false;
+        }
+    }
+
     public async Task<UserSettingsResponse?> GetUserSettings(int userid)
     {
         HttpResponseMessage? response = null;
@@ -39,11 +118,9 @@ public class AppserverService
             if (userSettings != null)
             {
                 _logger.LogInformation("Successfully fetched user settings");
-            }
-
+            }            
             return userSettings;
-          
-        }
+            }
         catch (HttpRequestException ex)
         {
             var errorResponse = await response.Content.ReadAsStringAsync();
@@ -196,6 +273,93 @@ public class ModelInfo
 
     [JsonPropertyName("is_real_time")]
     public bool IsRealTime { get; set; }
+}
+
+public class ModifyUserSettingsView
+{
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string default_language { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string default_currency { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    //[Required]      
+    public string client_settings { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public int? default_export_lines { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? sap_fields_in_chooser { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? sap_fields_in_header { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? manual_insert_column { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? compressed_list_header { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? compressed_bp_bar { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public IList<string> default_business_processes { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? auto_execute_items_on_login { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? auto_execute_last_search { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_locale { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_numbers { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_currencies { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_percentages { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_enum { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_date { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_period { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public string format_time { get; set; }
+
+    [DataMember(EmitDefaultValue = false)]
+    [Required]
+    public bool? hide_other_users_private_display { get; set; }
 }
 
 [JsonSerializable(typeof(UserSettingsResponse))]

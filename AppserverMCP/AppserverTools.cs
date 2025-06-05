@@ -53,4 +53,27 @@ public sealed class AppserverTools(AppserverService appserverService)
             return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
         }
     }
+
+    [McpServerTool, Description("updates user settings such as default Currency and takes user id and default Currency as input to be updated")]
+    public async Task<string> UpdateUserCurrency(int userid, string defaultCurrency)
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+            var userSettings = await _appserverService.PutUserCurrencyAsync(userid, defaultCurrency);
+            if (!userSettings)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
+            }
+
+            return $"{defaultCurrency} updated for {userid}";
+
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
+        }
+    }
 } 
