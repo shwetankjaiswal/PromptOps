@@ -321,7 +321,9 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         {
             return JsonSerializer.Serialize(new { error = $"Error generating system summary: {ex.Message}" });
         }
-    }    // AngleController MCP Tools    [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
+    }
+    // AngleController MCP Tools
+    //[McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
     public async Task<string> SearchAngles(
         string? query = "*:*",
         string? fields = "*",
@@ -370,7 +372,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
 
-    [McpServerTool, Description("Get a specific angle by its unique identifier")]
+    //[McpServerTool, Description("Get a specific angle by its unique identifier")]
     public async Task<string> GetAngleById(string angleId)
     {
         if (_angleService == null)
@@ -394,7 +396,26 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
         }
     }
-    [McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
+
+    [McpServerTool, Description("Get all angles or Get angle by search query if specified")]
+    public async Task<string> GetAngles(string query = null)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        try
+        {
+            var angle = await _angleService.GetAngles(query);
+
+            return JsonSerializer.Serialize(angle, AppserverContext.Default.AngleSearchResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
+        }
+    }
+
+    //[McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
     public async Task<string> FilterAngles(
         string? field = "",
         string? value = "",
@@ -432,6 +453,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             return JsonSerializer.Serialize(new { error = $"Error filtering angles: {ex.Message}" });
         }
     }
+
     [McpServerTool, Description("Get comprehensive angle statistics including counts, facets, and analytics data")]
     public async Task<string> GetAngleStatistics()
     {
@@ -446,6 +468,185 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle statistics: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Execute an angle display to get results data")]
+    public async Task<string> ExecuteAngleDisplay(
+        [Description("ID(integer) of the model containing the angle")] int modelId,
+        [Description("ID(integer) of the angle to execute")] int angleId,
+        [Description("ID(integer) of the display within the angle to execute")] int displayId)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (modelId <= 0)
+            return JsonSerializer.Serialize(new { error = "Model ID must be a positive integer" });
+
+        if (angleId <= 0)
+            return JsonSerializer.Serialize(new { error = "Angle ID must be a positive integer" });
+
+        if (displayId <= 0)
+            return JsonSerializer.Serialize(new { error = "Display ID must be a positive integer" });
+
+        try
+        {
+            var result = await _angleService.ExecuteAngleDisplay(modelId, angleId, displayId);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to execute angle display. The server may be unavailable or the model/angle/display IDs may be invalid." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.ExecuteAngleDisplayResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error executing angle display: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get the execution status of an angle display result using the URI from ExecuteAngleDisplay response. This tool can be polled until the angle execution status is finished")]
+    public async Task<string> GetAngleDisplayExecutionStatus(
+        [Description("URI of the result from ExecuteAngleDisplay response (e.g., '/results/15')")] string resultUri)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(resultUri))
+            return JsonSerializer.Serialize(new { error = "Result URI is required (e.g., 'results/15' from ExecuteAngleDisplay response)" });
+
+        try
+        {
+            var result = await _angleService.GetAngleDisplayExecutionStatus(resultUri);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve angle display execution status. The result URI may be invalid or the server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.GetAngleDisplayExecutionStatusResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle display execution status: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get a single page of data rows from an angle display execution result with manual pagination control")]
+    public async Task<string> GetAngleDisplayDataRowsPage(
+        [Description("Data rows URI from the execution status response (e.g., '/results/15/datarows')")] string dataRowsUri,
+        [Description("Starting offset for pagination (default: 0)")] int offset = 0,
+        [Description("Number of rows to fetch in this page (default: 300, max: 1000)")] int limit = 300,
+        [Description("Comma-separated list of field names to retrieve. This list comes from default_fields property in AngleDisplayExecutionStatus response. If not provided, will use all available fields")] string? fields = null)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(dataRowsUri))
+            return JsonSerializer.Serialize(new { error = "Data rows URI is required" });
+
+        if (offset < 0)
+            return JsonSerializer.Serialize(new { error = "Offset must be 0 or greater" });
+
+        if (limit <= 0 || limit > 1000)
+            return JsonSerializer.Serialize(new { error = "Limit must be between 1 and 1000" });
+
+        try
+        {
+            var fieldsList = string.IsNullOrWhiteSpace(fields) 
+                ? null 
+                : fields.Split(',').Select(f => f.Trim()).Where(f => !string.IsNullOrEmpty(f)).ToList();
+
+            var result = await _angleService.GetDataRows(dataRowsUri, offset, limit, fieldsList);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve data rows. The URI may be invalid or the server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.DataRowsResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving data rows page: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get data rows from an angle display execution result with automatic pagination. Fetches all available rows based on total count and default fields from execution status")]
+    public async Task<string> GetAngleDisplayDataRows(
+        [Description("Data rows URI from the execution status response (e.g., '/results/15/datarows' from the data_rows property)")] string dataRowsUri,
+        [Description("Comma-separated list of field names to retrieve. If not provided, will use all available fields")] string? fields = null,
+        [Description("Maximum number of rows to fetch per request (default: 300, max recommended: 500)")] int batchSize = 300,
+        [Description("Maximum total number of rows to fetch across all pages (default: 10000). Set to -1 for unlimited")] int maxTotalRows = 10000)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(dataRowsUri))
+            return JsonSerializer.Serialize(new { error = "Data rows URI is required (e.g., '/results/15/datarows' from execution status response)" });
+
+        if (batchSize <= 0 || batchSize > 1000)
+            return JsonSerializer.Serialize(new { error = "Batch size must be between 1 and 1000" });
+
+        try
+        {
+            var fieldsList = string.IsNullOrWhiteSpace(fields) 
+                ? null 
+                : fields.Split(',').Select(f => f.Trim()).Where(f => !string.IsNullOrEmpty(f)).ToList();
+
+            // First request to get total count and determine pagination
+            var firstBatch = await _angleService.GetDataRows(dataRowsUri, 0, Math.Min(batchSize, maxTotalRows > 0 ? maxTotalRows : batchSize), fieldsList);
+            
+            if (firstBatch == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve data rows. The URI may be invalid or the server may be unavailable." });
+            }
+
+            var allRows = new List<DataRow>(firstBatch.Rows);
+            var totalRows = firstBatch.Header.Total;
+            var fieldsReturned = firstBatch.Fields;
+            
+            // If we have more rows to fetch and haven't hit our limit
+            if (totalRows > batchSize && (maxTotalRows == -1 || allRows.Count < maxTotalRows))
+            {
+                var remaining = maxTotalRows == -1 ? totalRows - batchSize : Math.Min(maxTotalRows - batchSize, totalRows - batchSize);
+                var offset = batchSize;
+
+                while (remaining > 0 && offset < totalRows)
+                {
+                    var currentBatchSize = Math.Min(batchSize, remaining);
+                    var nextBatch = await _angleService.GetDataRows(dataRowsUri, offset, currentBatchSize, fieldsList);
+                    
+                    if (nextBatch == null || nextBatch.Rows.Count == 0)
+                        break;
+
+                    allRows.AddRange(nextBatch.Rows);
+                    offset += nextBatch.Rows.Count;
+                    remaining -= nextBatch.Rows.Count;
+
+                    // Add a small delay between requests to be gentle on the server
+                    await Task.Delay(100);
+                }
+            }
+
+            var result = new
+            {
+                summary = new
+                {
+                    total_rows_available = totalRows,
+                    rows_fetched = allRows.Count,
+                    fields_count = fieldsReturned.Count,
+                    batch_size_used = batchSize,
+                    pages_fetched = (int)Math.Ceiling((double)allRows.Count / batchSize),
+                    execution_time = firstBatch.ExecutionTime
+                },
+                fields = fieldsReturned,
+                rows = allRows
+            };
+
+            return JsonSerializer.Serialize(result);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving data rows: {ex.Message}" });
         }
     }
 
