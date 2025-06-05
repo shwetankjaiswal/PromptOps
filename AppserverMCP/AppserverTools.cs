@@ -323,7 +323,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
     // AngleController MCP Tools
-    [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
+    //[McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
     public async Task<string> SearchAngles(
         string? query = "*:*",
         string? fields = "*",
@@ -372,7 +372,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
 
-    [McpServerTool, Description("Get a specific angle by its unique identifier")]
+    //[McpServerTool, Description("Get a specific angle by its unique identifier")]
     public async Task<string> GetAngleById(string angleId)
     {
         if (_angleService == null)
@@ -398,7 +398,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
     }
 
     [McpServerTool, Description("Get all angles or Get angle by search query if specified")]
-    public async Task<string> GetAngles(string query)
+    public async Task<string> GetAngles(string query = null)
     {
         if (_angleService == null)
             return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
@@ -415,7 +415,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
 
-    [McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
+    //[McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
     public async Task<string> FilterAngles(
         string? field = "",
         string? value = "",
