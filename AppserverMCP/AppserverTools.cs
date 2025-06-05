@@ -448,4 +448,48 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle statistics: {ex.Message}" });
         }
     }
+
+    [McpServerTool, Description("Get system license information")]
+    public async Task<string> GetSystemLicense()
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+            var licenseInfo = await _appserverService.GetLicenseAsync();
+            if (licenseInfo == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve license information. The server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(licenseInfo, typeof(JsonElement), AppserverContext.Default);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving license information: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get list of all users")]
+    public async Task<string> GetUsers()
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+            var usersList = await _appserverService.GetUsersAsync();
+            if (usersList == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve users list. The server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(usersList, typeof(List<UserView>), AppserverContext.Default);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving users list: {ex.Message}" });
+        }
+    }
 }

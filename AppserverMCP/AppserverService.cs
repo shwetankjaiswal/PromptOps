@@ -14,7 +14,13 @@ public class AppserverService
 
     public AppserverService(IHttpClientFactory httpClientFactory, ILogger<AppserverService> logger, IConfiguration configuration, IPlatformService platformService)
     {
-        _httpClient = httpClientFactory.CreateClient();
+        // Create HttpClient with custom handler to disable SSL certificate validation
+        var handler = new HttpClientHandler()
+        {
+            ServerCertificateCustomValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
+        };
+
+        _httpClient = new HttpClient(handler);
         _logger = logger;
         _baseUrl = configuration.GetValue<string>("AppserverBaseUrl") ?? "http://localhost:8080";
         _platformService = platformService;
@@ -299,6 +305,89 @@ public class AppserverService
             return null;
         }
     }
+
+    public async Task<JsonElement?> GetLicenseAsync()
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            _logger.LogInformation("Fetching license information from {BaseUrl}/system/license", _baseUrl);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/system/license");
+            var accessToken = await _platformService.GetAccessTokenAsync();
+            request.Headers.Add("A4SAuthorization", accessToken);
+            request.Headers.Add("ROPC", "true");
+
+            response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            var licenseResponse = await response.Content.ReadFromJsonAsync<JsonElement>(AppserverContext.Default.Options);
+            
+            _logger.LogInformation("Successfully fetched license information");
+            return licenseResponse;
+        }
+        catch (HttpRequestException ex)
+        {
+            var errorResponse = response != null ? await response.Content.ReadAsStringAsync() : "Unknown error";
+            _logger.LogError(ex, "Failed to fetch license information: {ErrorMessage}", errorResponse);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request to fetch license information timed out");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            var errorResponse = response != null ? await response.Content.ReadAsStringAsync() : "Unknown error";
+            _logger.LogError(ex, "Failed to parse license information response: {errorResponse}");
+            return null;
+        }
+    }
+
+    public async Task<List<UserView>?> GetUsersAsync()
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            _logger.LogInformation("Fetching users list from {BaseUrl}/users", _baseUrl);
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/users");
+            var accessToken = await _platformService.GetAccessTokenAsync();
+            request.Headers.Add("A4SAuthorization", accessToken);
+            request.Headers.Add("ROPC", "true");
+
+            response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            
+            var usersResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.UsersListResponse);
+
+            if (usersResponse != null)
+            {
+                _logger.LogInformation("Successfully fetched {Count} users (total: {Total})", usersResponse.Users.Count, usersResponse.Header.Total);
+                return usersResponse.Users;
+            }
+
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            var errorResponse = response != null ? await response.Content.ReadAsStringAsync() : "Unknown error";
+            _logger.LogError(ex, "Failed to fetch users list: {ErrorMessage}", errorResponse);
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request to fetch users list timed out");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            var errorResponse = response != null ? await response.Content.ReadAsStringAsync() : "Unknown error";
+            _logger.LogError(ex, "Failed to parse users list response: {ErrorResponse}", errorResponse);
+            return null;
+        }
+    }
 }
 
 public class AboutOutputView
@@ -555,6 +644,63 @@ public class NotificationRecipientItemView
     public bool Failed { get; set; }
 }
 
+public class UsersListResponse
+{
+    [JsonPropertyName("header")]
+    public UsersListHeader Header { get; set; } = new();
+
+    [JsonPropertyName("users")]
+    public List<UserView> Users { get; set; } = new();
+}
+
+public class UsersListHeader
+{
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("limit")]
+    public int Limit { get; set; }
+
+    [JsonPropertyName("offset")]
+    public int Offset { get; set; }
+}
+
+public class UserView
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("full_name")]
+    public string FullName { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; }
+
+    [JsonPropertyName("is_admin")]
+    public bool IsAdmin { get; set; }
+
+    [JsonPropertyName("is_external")]
+    public bool IsExternal { get; set; }
+
+    [JsonPropertyName("created")]
+    public WhoWhenView Created { get; set; } = new();
+
+    [JsonPropertyName("changed")]
+    public WhoWhenView Changed { get; set; } = new();
+
+    [JsonPropertyName("last_login")]
+    public long? LastLogin { get; set; }
+
+    [JsonPropertyName("uri")]
+    public string Uri { get; set; } = string.Empty;
+}
+
 [JsonSerializable(typeof(AboutOutputView))]
 [JsonSerializable(typeof(BusinessProcessResponse))]
 [JsonSerializable(typeof(AngleSearchRequest))]
@@ -595,6 +741,10 @@ public class NotificationRecipientItemView
 [JsonSerializable(typeof(DayView))]
 [JsonSerializable(typeof(List<DayView>))]
 [JsonSerializable(typeof(JsonElement))]
+[JsonSerializable(typeof(List<UserView>))]
+[JsonSerializable(typeof(UserView))]
+[JsonSerializable(typeof(UsersListResponse))]
+[JsonSerializable(typeof(UsersListHeader))]
 internal sealed partial class AppserverContext : JsonSerializerContext
 {
 }

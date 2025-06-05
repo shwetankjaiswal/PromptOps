@@ -29,6 +29,15 @@ The server exposes several MCP tools that can be invoked by clients:
 * **GetModelInfo**: Retrieves information about a specific model by its model ID
 * **GetAllModels**: Gets a list of all available models from the Appserver
 * **GetModelsStatus**: Gets the current status of all models (Up/Down) with their last update timestamps
+#### Task Management Tools
+
+* **ExecuteTask**: Execute a task by ID with optional reason parameter
+* **GetTaskStatus**: Get current status and details of a specific task by ID
+* **GetTasks**: Get list of all tasks from the Appserver
+
+#### System Information Tools
+
+* **GetSystemLicense**: Get system license information from the Appserver (`system/license` endpoint)
 
 ## Configuration
 
