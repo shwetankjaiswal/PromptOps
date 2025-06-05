@@ -23,16 +23,58 @@ public class AppserverService
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
-    public async Task<bool> PutUserCurrencyAsync(int userId, string defaultCurrency)
+    public async Task<List<(string FullName, string Uri)>?> GetAllUser()
+    {
+        HttpResponseMessage? response = null;
+        try
+        {
+            _logger.LogInformation("Fetching User {BaseUrl}/users", _baseUrl);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/users");
+            var accessToken = await _platformService.GetAccessTokenAsync();
+            request.Headers.Add("A4SAuthorization", accessToken);
+            request.Headers.Add("ROPC", "true");
+
+            response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var userListResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.UserListResponse);
+            if (userListResponse != null)
+            {
+                _logger.LogInformation("Successfully fetched All user");
+                return userListResponse.Users
+               .Select(u => (u.FullName, u.Uri))
+               .ToList();
+            }
+            return new List<(string, string)>(); ;
+        }
+        catch (HttpRequestException ex)
+        {
+            var errorResponse = await response.Content.ReadAsStringAsync();
+            _logger.LogError(ex, $"Failed to fetch users from Appserver: {errorResponse}");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request to Appserver for users timed out");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse users response from Appserver");
+            return null;
+        }
+    }
+
+    public async Task<bool> PutUserCurrencyAsync(string uri, string defaultCurrency)
     {
         HttpResponseMessage? response = null;
         try
         {
             // 1. Get current user settings
-            var currentSettings = await GetUserSettings(userId);
+            var currentSettings = await GetUserSettings(uri);
             if (currentSettings == null)
             {
-                _logger.LogError("Cannot update currency: failed to fetch current user settings for user {UserId}", userId);
+                _logger.LogError("Cannot update currency: failed to fetch current user settings for user");
                 return false;
             }
 
@@ -64,7 +106,7 @@ public class AppserverService
             };
 
             // 3. Send PUT request
-            using var request = new HttpRequestMessage(HttpMethod.Put, $"{_baseUrl}/users/{userId}/settings")
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"{_baseUrl}{uri}/settings")
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(modifyView),
@@ -79,7 +121,7 @@ public class AppserverService
             response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation("Successfully updated user currency for user {UserId}", userId);
+            _logger.LogInformation("Successfully updated user currency for user");
             return true;
         }
         catch (HttpRequestException ex)
@@ -100,13 +142,13 @@ public class AppserverService
         }
     }
 
-    public async Task<UserSettingsResponse?> GetUserSettings(int userid)
+    public async Task<UserSettingsResponse?> GetUserSettings(string uri)
     {
         HttpResponseMessage? response = null;
         try
         {
             _logger.LogInformation("Fetching User Settings from {BaseUrl}/users/1/settings", _baseUrl);
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/users/{userid}/settings");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}{uri}/settings");
             var accessToken = await _platformService.GetAccessTokenAsync();
             request.Headers.Add("A4SAuthorization", accessToken);
             request.Headers.Add("ROPC", "true");
@@ -362,6 +404,102 @@ public class ModifyUserSettingsView
     public bool? hide_other_users_private_display { get; set; }
 }
 
+public class UserListResponse
+{
+    [JsonPropertyName("header")]
+    public UserListHeader Header { get; set; } = new();
+
+    [JsonPropertyName("users")]
+    public List<UserInfo> Users { get; set; } = new();
+
+    [JsonPropertyName("sort_options")]
+    public List<SortOption> SortOptions { get; set; } = new();
+}
+
+public class UserListHeader
+{
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("limit")]
+    public int Limit { get; set; }
+
+    [JsonPropertyName("offset")]
+    public int Offset { get; set; }
+}
+
+public class UserInfo
+{
+    [JsonPropertyName("access_to_models")]
+    public List<string> AccessToModels { get; set; } = new();
+
+    [JsonPropertyName("system_privileges")]
+    public SystemPrivileges SystemPrivileges { get; set; } = new();
+
+    [JsonPropertyName("uri")]
+    public string Uri { get; set; } = string.Empty;
+
+    [JsonPropertyName("registered_on")]
+    public long RegisteredOn { get; set; }
+
+    [JsonPropertyName("last_logon")]
+    public long? LastLogon { get; set; }
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("full_name")]
+    public string FullName { get; set; } = string.Empty;
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; }
+
+    [JsonPropertyName("assigned_roles")]
+    public List<AssignedRole>? AssignedRoles { get; set; }
+}
+
+public class SystemPrivileges
+{
+    [JsonPropertyName("has_management_access")]
+    public bool HasManagementAccess { get; set; }
+
+    [JsonPropertyName("manage_system")]
+    public bool ManageSystem { get; set; }
+
+    [JsonPropertyName("manage_users")]
+    public bool ManageUsers { get; set; }
+
+    [JsonPropertyName("allow_impersonation")]
+    public bool AllowImpersonation { get; set; }
+
+    [JsonPropertyName("schedule_angles")]
+    public bool ScheduleAngles { get; set; }
+}
+
+public class AssignedRole
+{
+    [JsonPropertyName("role_id")]
+    public string RoleId { get; set; } = string.Empty;
+
+    [JsonPropertyName("model_id")]
+    public string? ModelId { get; set; }
+}
+
+public class SortOption
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+}
+
+[JsonSerializable(typeof(UserListResponse))]
+[JsonSerializable(typeof(UserListHeader))]
+[JsonSerializable(typeof(List<UserInfo>))]
+[JsonSerializable(typeof(UserInfo))]
+[JsonSerializable(typeof(SystemPrivileges))]
+[JsonSerializable(typeof(List<AssignedRole>))]
+[JsonSerializable(typeof(AssignedRole))]
+[JsonSerializable(typeof(List<SortOption>))]
+[JsonSerializable(typeof(SortOption))]
 [JsonSerializable(typeof(UserSettingsResponse))]
 [JsonSerializable(typeof(AboutOutputView))]
 [JsonSerializable(typeof(List<ModelInfo>))]

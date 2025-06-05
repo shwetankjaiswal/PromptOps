@@ -1,6 +1,7 @@
+using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Text.Json;
-using ModelContextProtocol.Server;
+using System.Xml.Linq;
 
 namespace AppserverMCP;
 
@@ -31,15 +32,22 @@ public sealed class AppserverTools(AppserverService appserverService)
         }
     }
 
-    [McpServerTool, Description("Get user settings of the user from app server and takes user id as input")]
-    public async Task<string> GetUserSettings(int userid)
+    [McpServerTool, Description("Get user settings of the user from app server and takes user's name as input")]
+    public async Task<string> GetUserSettings(string username)
     {
         if (_appserverService == null)
             return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
 
         try
         {
-          var userSettings = await _appserverService.GetUserSettings(userid);
+            var allUsers = await _appserverService.GetAllUser();
+            string? uri = allUsers?.FirstOrDefault(u => u.FullName.Equals(username, StringComparison.OrdinalIgnoreCase)).Uri;
+            if (uri == null)
+            {
+                return JsonSerializer.Serialize(new { error = "user doesn't exist. please specify exact name" });
+            }
+
+            var userSettings = await _appserverService.GetUserSettings(uri);
             if (userSettings == null)
             {
                 return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
@@ -54,21 +62,28 @@ public sealed class AppserverTools(AppserverService appserverService)
         }
     }
 
-    [McpServerTool, Description("updates user settings such as default Currency and takes user id and default Currency as input to be updated")]
-    public async Task<string> UpdateUserCurrency(int userid, string defaultCurrency)
+    [McpServerTool, Description("updates user settings such as default Currency and takes user name and default Currency as input to be updated")]
+    public async Task<string> UpdateUserCurrency(string username, string defaultCurrency)
     {
         if (_appserverService == null)
             return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
 
         try
         {
-            var userSettings = await _appserverService.PutUserCurrencyAsync(userid, defaultCurrency);
+            var allUsers = await _appserverService.GetAllUser();
+            string? uri = allUsers?.FirstOrDefault(u => u.FullName.Equals(username, StringComparison.OrdinalIgnoreCase)).Uri;
+            if (uri == null)
+            {
+                return JsonSerializer.Serialize(new { error = "user doesn't exist. please specify exact name" });
+            }
+
+            var userSettings = await _appserverService.PutUserCurrencyAsync(uri, defaultCurrency);
             if (!userSettings)
             {
                 return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
             }
 
-            return $"{defaultCurrency} updated for {userid}";
+            return $"{defaultCurrency} updated for {username}";
 
         }
         catch (Exception ex)
