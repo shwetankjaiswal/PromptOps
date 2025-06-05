@@ -197,9 +197,25 @@ public class ModelInfo
 
 [JsonSerializable(typeof(AboutOutputView))]
 [JsonSerializable(typeof(BusinessProcessResponse))]
-
+[JsonSerializable(typeof(ItemSearchRequest))]
+[JsonSerializable(typeof(ItemSearchResponse))]
+[JsonSerializable(typeof(ItemResponseHeader))]
+[JsonSerializable(typeof(ItemDocument))]
+[JsonSerializable(typeof(ItemFilterRequest))]
+[JsonSerializable(typeof(ItemStatisticsResponse))]
+[JsonSerializable(typeof(FacetCategory))]
+[JsonSerializable(typeof(FacetFilter))]
+[JsonSerializable(typeof(ItemSortOption))]
+[JsonSerializable(typeof(SortOption))]
+[JsonSerializable(typeof(List<FacetCategory>))]
+[JsonSerializable(typeof(List<FacetFilter>))]
+[JsonSerializable(typeof(List<ItemSortOption>))]
 [JsonSerializable(typeof(List<ModelInfo>))]
 [JsonSerializable(typeof(ModelInfo))]
+[JsonSerializable(typeof(Dictionary<string, JsonElement>))]
+[JsonSerializable(typeof(Dictionary<string, object>))]
+[JsonSerializable(typeof(JsonElement))]
+[JsonSerializable(typeof(object))]
 internal sealed partial class AppserverContext : JsonSerializerContext
 {
 }

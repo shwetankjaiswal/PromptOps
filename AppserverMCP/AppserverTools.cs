@@ -1,13 +1,16 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ModelContextProtocol.Server;
+using AppserverMCP.Services;
+using AppserverMCP.Models;
 
 namespace AppserverMCP;
 
 [McpServerToolType]
-public sealed class AppserverTools(AppserverService appserverService)
+public sealed class AppserverTools(AppserverService appserverService, ItemService itemService)
 {
     private AppserverService? _appserverService = appserverService;
+    private ItemService? _itemService = itemService;
 
     [McpServerTool, Description("Get comprehensive information about the Appserver including version and all available models with their status")]
     public async Task<string> GetAppserverAbout()
@@ -317,6 +320,130 @@ public sealed class AppserverTools(AppserverService appserverService)
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Error generating system summary: {ex.Message}" });
+        }
+    }
+
+    // ItemController MCP Tools
+
+    [McpServerTool, Description("Search for items using Solr with flexible query parameters including filters, sorting, and pagination")]
+    public async Task<string> SearchItems(
+        string? query = "*:*",
+        string? fields = "*",
+        string? sort = "",
+        int start = 0,
+        int rows = 10,
+        bool facet = false,
+        string? facetFields = "",
+        bool highlight = false,
+        string? highlightFields = "")
+    {
+        if (_itemService == null)
+            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+
+        try
+        {
+            var searchRequest = new ItemSearchRequest
+            {
+                Query = query ?? "*:*",
+                Fields = fields ?? "*",
+                Sort = sort ?? "",
+                Start = start,
+                Rows = rows,
+                Facet = facet,
+                Highlight = highlight,
+                HighlightFields = highlightFields ?? ""
+            };
+
+            if (facet && !string.IsNullOrEmpty(facetFields))
+            {
+                searchRequest.FacetFields = facetFields.Split(',').Select(f => f.Trim()).ToList();
+            }
+
+            var result = await _itemService.SearchItemsAsync(searchRequest);
+            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemSearchResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error searching items: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get a specific item by its unique identifier")]
+    public async Task<string> GetItemById(string itemId)
+    {
+        if (_itemService == null)
+            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(itemId))
+            return JsonSerializer.Serialize(new { error = "Item ID is required" });
+
+        try
+        {
+            var item = await _itemService.GetItemByIdAsync(itemId);
+            if (item == null)
+            {
+                return JsonSerializer.Serialize(new { error = $"Item with ID '{itemId}' not found" });
+            }
+
+            return JsonSerializer.Serialize(item, AppserverContext.Default.ItemDocument);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving item: {ex.Message}" });
+        }
+    }
+    [McpServerTool, Description("Filter items with advanced criteria including multiple field filters and date ranges")]
+    public async Task<string> FilterItems(
+        string? field = "",
+        string? value = "",
+        string? operator_ = "equals",
+        string? from = null,
+        string? to = null,
+        int start = 0,
+        int rows = 10,
+        string? sort = "")
+    {
+        if (_itemService == null)
+            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+
+        try
+        {
+            var filters = new List<ItemFilterRequest>();
+
+            if (!string.IsNullOrEmpty(field) && !string.IsNullOrEmpty(value))
+            {
+                filters.Add(new ItemFilterRequest
+                {
+                    Field = field,
+                    Value = value,
+                    Operator = operator_ ?? "equals",
+                    From = from,
+                    To = to
+                });
+            }
+
+            var result = await _itemService.FilterItemsAsync(filters, start, rows, sort ?? "");
+            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemSearchResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error filtering items: {ex.Message}" });
+        }
+    }
+    [McpServerTool, Description("Get comprehensive item statistics including counts, facets, and analytics data")]
+    public async Task<string> GetItemStatistics()
+    {
+        if (_itemService == null)
+            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+
+        try
+        {
+            var result = await _itemService.GetItemStatisticsAsync();
+            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemStatisticsResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving item statistics: {ex.Message}" });
         }
     }
 }
