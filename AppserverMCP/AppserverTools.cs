@@ -31,15 +31,15 @@ public sealed class AppserverTools(AppserverService appserverService)
         }
     }
 
-    [McpServerTool, Description("Get user settings of the user from app server")]
-    public async Task<string> GetUserSettings()
+    [McpServerTool, Description("Get user settings of the user from app server and takes user id as input")]
+    public async Task<string> GetUserSettings(int userid)
     {
         if (_appserverService == null)
             return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
 
         try
         {
-          var userSettings = await _appserverService.GetUserSettings();
+          var userSettings = await _appserverService.GetUserSettings(userid);
             if (userSettings == null)
             {
                 return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });

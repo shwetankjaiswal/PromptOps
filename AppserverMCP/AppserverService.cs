@@ -21,13 +21,13 @@ public class AppserverService
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
-    public async Task<UserSettingsResponse?> GetUserSettings()
+    public async Task<UserSettingsResponse?> GetUserSettings(int userid)
     {
         HttpResponseMessage? response = null;
         try
         {
             _logger.LogInformation("Fetching User Settings from {BaseUrl}/users/1/settings", _baseUrl);
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/users/{1}/settings");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/users/{userid}/settings");
             var accessToken = await _platformService.GetAccessTokenAsync();
             request.Headers.Add("A4SAuthorization", accessToken);
             request.Headers.Add("ROPC", "true");
