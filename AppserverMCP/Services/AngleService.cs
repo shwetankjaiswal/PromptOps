@@ -194,7 +194,8 @@ namespace AppserverMCP.Services
 
         public async Task<AngleSearchResponse?> GetAngles(string query)
         {
-            HttpResponseMessage? response = null; try
+            HttpResponseMessage? response = null;
+            try
             {
                 var url = $"{_baseUrl}/items?{(string.IsNullOrEmpty(query) ? null : $"q={query}&")}fq=facetcat_itemtype:(facet_angle)&caching=false&viewmode=basic";
 
