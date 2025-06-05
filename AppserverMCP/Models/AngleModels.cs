@@ -279,4 +279,146 @@ namespace AppserverMCP.Models
         [JsonPropertyName("dir")]
         public string? Dir { get; set; }
     }
+
+    // Models for ExecuteAngleDisplay functionality
+    public class ExecuteAngleDisplayRequest
+    {
+        [JsonPropertyName("query_definition")]
+        public List<QueryDefinitionItem> QueryDefinition { get; set; } = new();
+    }
+
+    public class QueryDefinitionItem
+    {
+        [JsonPropertyName("base_angle")]
+        public string? BaseAngle { get; set; }
+
+        [JsonPropertyName("base_display")]
+        public string? BaseDisplay { get; set; }
+
+        [JsonPropertyName("queryblock_type")]
+        public string QueryBlockType { get; set; } = string.Empty;
+    }
+
+    public class ExecuteAngleDisplayResponse
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; } = string.Empty;
+
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = string.Empty;
+
+        [JsonPropertyName("instance")]
+        public string Instance { get; set; } = string.Empty;
+
+        [JsonPropertyName("search")]
+        public string Search { get; set; } = string.Empty;
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = string.Empty;
+
+        [JsonPropertyName("progress")]
+        public double Progress { get; set; }
+
+        [JsonPropertyName("queryable")]
+        public bool Queryable { get; set; }
+
+        [JsonPropertyName("row_count")]
+        public int RowCount { get; set; }
+
+        [JsonPropertyName("object_count")]
+        public int ObjectCount { get; set; }
+
+        [JsonPropertyName("executed")]
+        public ExecutedInfo Executed { get; set; } = new();
+
+        [JsonPropertyName("query_definition")]
+        public string QueryDefinition { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_fields")]
+        public string DataFields { get; set; } = string.Empty;
+
+        [JsonPropertyName("query_fields")]
+        public string QueryFields { get; set; } = string.Empty;
+
+        [JsonPropertyName("followups")]
+        public string Followups { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_rows")]
+        public string DataRows { get; set; } = string.Empty;
+
+        [JsonPropertyName("execute_steps")]
+        public string ExecuteSteps { get; set; } = string.Empty;
+
+        [JsonPropertyName("sap_transactions")]
+        public string SapTransactions { get; set; } = string.Empty;
+
+        [JsonPropertyName("actual_classes")]
+        public List<string> ActualClasses { get; set; } = new();
+
+        [JsonPropertyName("potential_classes")]
+        public List<string> PotentialClasses { get; set; } = new();
+
+        [JsonPropertyName("default_fields")]
+        public List<string> DefaultFields { get; set; } = new();
+
+        [JsonPropertyName("modeldata_timestamp")]
+        public long ModeldataTimestamp { get; set; }
+
+        [JsonPropertyName("original_modeldata_timestamp")]
+        public string OriginalModeldataTimestamp { get; set; } = string.Empty;
+
+        [JsonPropertyName("authorizations")]
+        public AngleAuthorizations Authorizations { get; set; } = new();
+    }
+
+    public class ExecutedInfo
+    {
+        [JsonPropertyName("user")]
+        public string User { get; set; } = string.Empty;
+
+        [JsonPropertyName("datetime")]
+        public long DateTime { get; set; }
+    }
+
+    public class AngleAuthorizations
+    {
+        [JsonPropertyName("change_query_filters")]
+        public bool ChangeQueryFilters { get; set; }
+
+        [JsonPropertyName("change_query_followups")]
+        public bool ChangeQueryFollowups { get; set; }
+
+        [JsonPropertyName("single_item_view")]
+        public bool SingleItemView { get; set; }
+
+        [JsonPropertyName("change_field_collection")]
+        public bool ChangeFieldCollection { get; set; }
+
+        [JsonPropertyName("sort")]
+        public bool Sort { get; set; }
+
+        [JsonPropertyName("add_filter")]
+        public bool AddFilter { get; set; }
+
+        [JsonPropertyName("add_followup")]
+        public bool AddFollowup { get; set; }
+
+        [JsonPropertyName("add_aggregation")]
+        public bool AddAggregation { get; set; }
+
+        [JsonPropertyName("export")]
+        public bool Export { get; set; }
+    }
+
+    public class GetAngleDisplayExecutionStatusResponse : ExecuteAngleDisplayResponse
+    {
+        [JsonPropertyName("execution_time")]
+        public int ExecutionTime { get; set; }
+    }
 }

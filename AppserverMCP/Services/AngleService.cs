@@ -222,6 +222,128 @@ namespace AppserverMCP.Services
                 return null;
             }
         }
+
+        public async Task<ExecuteAngleDisplayResponse?> ExecuteAngleDisplay(int modelId, int angleId, int displayId)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                var url = $"{_baseUrl}/results?redirect=no";
+
+                _logger.LogInformation("Executing angle display: ModelId={ModelId}, AngleId={AngleId}, DisplayId={DisplayId}", modelId, angleId, displayId);
+
+                // Build the request body
+                var requestBody = new ExecuteAngleDisplayRequest
+                {
+                    QueryDefinition = new List<QueryDefinitionItem>
+                    {
+                        new QueryDefinitionItem
+                        {
+                            BaseAngle = $"/models/{modelId}/angles/{angleId}",
+                            QueryBlockType = "base_angle"
+                        },
+                        new QueryDefinitionItem
+                        {
+                            BaseDisplay = $"/models/{modelId}/angles/{angleId}/displays/{displayId}",
+                            QueryBlockType = "base_display"
+                        }
+                    }
+                };
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                // Serialize request body to JSON
+                var jsonContent = JsonSerializer.Serialize(requestBody, AppserverContext.Default.ExecuteAngleDisplayRequest);
+                request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("Sending POST request to {Url} with body: {RequestBody}", url, jsonContent);
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var executeResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.ExecuteAngleDisplayResponse);
+
+                if (executeResponse != null)
+                {
+                    _logger.LogInformation("Successfully executed angle display. Result ID: {ResultId}, Status: {Status}", 
+                        executeResponse.Id, executeResponse.Status);
+                }
+
+                return executeResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
+                _logger.LogError(ex, "Failed to execute angle display ModelId={ModelId}, AngleId={AngleId}, DisplayId={DisplayId}: {ErrorResponse}", 
+                    modelId, angleId, displayId, errorResponse);
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Request to execute angle display ModelId={ModelId}, AngleId={AngleId}, DisplayId={DisplayId} timed out", 
+                    modelId, angleId, displayId);
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse execute angle display response for ModelId={ModelId}, AngleId={AngleId}, DisplayId={DisplayId}", 
+                    modelId, angleId, displayId);
+                return null;
+            }
+        }
+
+        public async Task<GetAngleDisplayExecutionStatusResponse?> GetAngleDisplayExecutionStatus(string resultUri)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                // The resultUri is expected to be in format like "results/15" or "/results/15"
+                var url = resultUri.StartsWith("/") ? $"{_baseUrl}{resultUri}" : $"{_baseUrl}/{resultUri}";
+
+                _logger.LogInformation("Getting angle display execution status from: {Url}", url);
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var statusResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.GetAngleDisplayExecutionStatusResponse);
+
+                if (statusResponse != null)
+                {
+                    _logger.LogInformation("Successfully retrieved angle display execution status. Result ID: {ResultId}, Status: {Status}, Execution Time: {ExecutionTime}ms", 
+                        statusResponse.Id, statusResponse.Status, statusResponse.ExecutionTime);
+                }
+
+                return statusResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
+                _logger.LogError(ex, "Failed to get angle display execution status from {ResultUri}: {ErrorResponse}", 
+                    resultUri, errorResponse);
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Request to get angle display execution status from {ResultUri} timed out", 
+                    resultUri);
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse angle display execution status response from {ResultUri}", 
+                    resultUri);
+                return null;
+            }
+        }
+
         private string BuildQueryParameters(AngleSearchRequest searchRequest)
         {
             var parameters = new List<string>

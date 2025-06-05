@@ -471,6 +471,66 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
 
+    [McpServerTool, Description("Execute an angle display to get results data")]
+    public async Task<string> ExecuteAngleDisplay(
+        [Description("ID(integer) of the model containing the angle")] int modelId,
+        [Description("ID(integer) of the angle to execute")] int angleId,
+        [Description("ID(integer) of the display within the angle to execute")] int displayId)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (modelId <= 0)
+            return JsonSerializer.Serialize(new { error = "Model ID must be a positive integer" });
+
+        if (angleId <= 0)
+            return JsonSerializer.Serialize(new { error = "Angle ID must be a positive integer" });
+
+        if (displayId <= 0)
+            return JsonSerializer.Serialize(new { error = "Display ID must be a positive integer" });
+
+        try
+        {
+            var result = await _angleService.ExecuteAngleDisplay(modelId, angleId, displayId);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to execute angle display. The server may be unavailable or the model/angle/display IDs may be invalid." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.ExecuteAngleDisplayResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error executing angle display: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get the execution status of an angle display result using the URI from ExecuteAngleDisplay response. This tool can be polled until the angle execution status is finished")]
+    public async Task<string> GetAngleDisplayExecutionStatus(
+        [Description("URI of the result from ExecuteAngleDisplay response (e.g., '/results/15')")] string resultUri)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(resultUri))
+            return JsonSerializer.Serialize(new { error = "Result URI is required (e.g., 'results/15' from ExecuteAngleDisplay response)" });
+
+        try
+        {
+            var result = await _angleService.GetAngleDisplayExecutionStatus(resultUri);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve angle display execution status. The result URI may be invalid or the server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.GetAngleDisplayExecutionStatusResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle display execution status: {ex.Message}" });
+        }
+    }
+
     [McpServerTool, Description("Get system license information")]
     public async Task<string> GetSystemLicense()
     {
