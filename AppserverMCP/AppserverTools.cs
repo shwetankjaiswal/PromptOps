@@ -321,7 +321,9 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         {
             return JsonSerializer.Serialize(new { error = $"Error generating system summary: {ex.Message}" });
         }
-    }    // AngleController MCP Tools    [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
+    }
+    // AngleController MCP Tools
+    [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
     public async Task<string> SearchAngles(
         string? query = "*:*",
         string? fields = "*",
@@ -394,6 +396,25 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
         }
     }
+
+    [McpServerTool, Description("Get all angles or Get angle by search query if specified")]
+    public async Task<string> GetAngles(string query)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        try
+        {
+            var angle = await _angleService.GetAngles(query);
+
+            return JsonSerializer.Serialize(angle, AppserverContext.Default.AngleSearchResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
+        }
+    }
+
     [McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
     public async Task<string> FilterAngles(
         string? field = "",
@@ -432,6 +453,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             return JsonSerializer.Serialize(new { error = $"Error filtering angles: {ex.Message}" });
         }
     }
+
     [McpServerTool, Description("Get comprehensive angle statistics including counts, facets, and analytics data")]
     public async Task<string> GetAngleStatistics()
     {

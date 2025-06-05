@@ -35,14 +35,17 @@ namespace AppserverMCP.Services
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 var accessToken = await _platformService.GetAccessTokenAsync();
                 request.Headers.Add("A4SAuthorization", accessToken);
-                request.Headers.Add("ROPC", "true"); response = await _httpClient.SendAsync(request);
+                request.Headers.Add("ROPC", "true");
+                
+                response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
                 // Log the raw JSON response for debugging
                 var jsonContent = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation("Raw API Response: {JsonContent}", jsonContent);
 
-                var searchResponse = await response.Content.ReadFromJsonAsync<AngleSearchResponse>(); if (searchResponse != null)
+                var searchResponse = await response.Content.ReadFromJsonAsync<AngleSearchResponse>();
+                if (searchResponse != null)
                 {
                     _logger.LogInformation("Successfully searched items. Found {Count} items", searchResponse.Header.Total);
                 }
@@ -185,6 +188,36 @@ namespace AppserverMCP.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get item statistics");
+                return null;
+            }
+        }
+
+        public async Task<AngleSearchResponse?> GetAngles(string query)
+        {
+            HttpResponseMessage? response = null; try
+            {
+                var url = $"{_baseUrl}/items?{(string.IsNullOrEmpty(query) ? null : $"q={query}&")}fq=facetcat_itemtype:(facet_angle)&caching=false&viewmode=basic";
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var angle = await response.Content.ReadFromJsonAsync<AngleSearchResponse>();
+
+                if (angle != null)
+                {
+                    _logger.LogInformation("Successfully retrieved angles based on query: {Query}", query);
+                }
+
+                return angle;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse angle response from Appserver for search query {Query}", query);
                 return null;
             }
         }
