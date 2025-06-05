@@ -1,0 +1,10 @@
+{
+    "servers": {
+        "my-mcp-server-902366d5": {
+            "url": "http://localhost:3001"
+        },
+        "my-mcp-server-5e5c1cdb": {
+            "url": "http://localhost:3001"
+        }
+    }
+}

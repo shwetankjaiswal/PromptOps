@@ -1,6 +1,7 @@
 using AppserverMCP;
 using AppserverMCP.Utils;
 using AppserverMCP.Interfaces;
+using AppserverMCP.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services
@@ -11,6 +12,7 @@ builder.Services
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<AppserverService>();
 builder.Services.AddSingleton<IPlatformService, PlatformService>();
+builder.Services.AddSingleton<AngleService>();
 
 var app = builder.Build();
 
