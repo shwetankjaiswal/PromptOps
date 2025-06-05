@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace AppserverMCP.Models
@@ -420,5 +421,42 @@ namespace AppserverMCP.Models
     {
         [JsonPropertyName("execution_time")]
         public int ExecutionTime { get; set; }
+    }
+
+    // Models for DataRows functionality
+    public class DataRowsResponse
+    {
+        [JsonPropertyName("header")]
+        public DataRowsHeader Header { get; set; } = new();
+
+        [JsonPropertyName("fields")]
+        public List<string> Fields { get; set; } = new();
+
+        [JsonPropertyName("rows")]
+        public List<DataRow> Rows { get; set; } = new();
+
+        [JsonPropertyName("execution_time")]
+        public double? ExecutionTime { get; set; }
+    }
+
+    public class DataRowsHeader
+    {
+        [JsonPropertyName("total")]
+        public int Total { get; set; }
+
+        [JsonPropertyName("offset")]
+        public int Offset { get; set; }
+
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+    }
+
+    public class DataRow
+    {
+        [JsonPropertyName("row_id")]
+        public string RowId { get; set; } = string.Empty;
+
+        [JsonPropertyName("field_values")]
+        public List<JsonElement> FieldValues { get; set; } = new();
     }
 }

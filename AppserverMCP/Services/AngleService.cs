@@ -344,6 +344,67 @@ namespace AppserverMCP.Services
             }
         }
 
+        public async Task<DataRowsResponse?> GetDataRows(string dataRowsUri, int offset = 0, int limit = 300, List<string>? fields = null)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                // Build URL with query parameters
+                var baseUrl = dataRowsUri.StartsWith("/") ? $"{_baseUrl}{dataRowsUri}" : $"{_baseUrl}/{dataRowsUri}";
+                var queryParams = new List<string>
+                {
+                    $"offset={offset}",
+                    $"limit={limit}"
+                };
+
+                if (fields != null && fields.Count > 0)
+                {
+                    queryParams.Add($"fields={string.Join("%2C", fields.Select(f => Uri.EscapeDataString(f)))}");
+                }
+
+                var url = $"{baseUrl}?{string.Join("&", queryParams)}";
+
+                _logger.LogInformation("Getting data rows from: {Url}", url);
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var dataRowsResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.DataRowsResponse);
+
+                if (dataRowsResponse != null)
+                {
+                    _logger.LogInformation("Successfully retrieved data rows. Total: {Total}, Offset: {Offset}, Count: {Count}", 
+                        dataRowsResponse.Header.Total, dataRowsResponse.Header.Offset, dataRowsResponse.Header.Count);
+                }
+
+                return dataRowsResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
+                _logger.LogError(ex, "Failed to get data rows from {DataRowsUri}: {ErrorResponse}", 
+                    dataRowsUri, errorResponse);
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Request to get data rows from {DataRowsUri} timed out", 
+                    dataRowsUri);
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse data rows response from {DataRowsUri}", 
+                    dataRowsUri);
+                return null;
+            }
+        }
+
         private string BuildQueryParameters(AngleSearchRequest searchRequest)
         {
             var parameters = new List<string>
