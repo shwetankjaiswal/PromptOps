@@ -7,10 +7,10 @@ using AppserverMCP.Models;
 namespace AppserverMCP;
 
 [McpServerToolType]
-public sealed class AppserverTools(AppserverService appserverService, ItemService itemService)
+public sealed class AppserverTools(AppserverService appserverService, AngleService angleService)
 {
     private AppserverService? _appserverService = appserverService;
-    private ItemService? _itemService = itemService;
+    private AngleService? _angleService = angleService;
 
     [McpServerTool, Description("Get comprehensive information about the Appserver including version and all available models with their status")]
     public async Task<string> GetAppserverAbout()
@@ -321,12 +321,8 @@ public sealed class AppserverTools(AppserverService appserverService, ItemServic
         {
             return JsonSerializer.Serialize(new { error = $"Error generating system summary: {ex.Message}" });
         }
-    }
-
-    // ItemController MCP Tools
-
-    [McpServerTool, Description("Search for items using Solr with flexible query parameters including filters, sorting, and pagination")]
-    public async Task<string> SearchItems(
+    }    // AngleController MCP Tools    [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
+    public async Task<string> SearchAngles(
         string? query = "*:*",
         string? fields = "*",
         string? sort = "",
@@ -335,14 +331,15 @@ public sealed class AppserverTools(AppserverService appserverService, ItemServic
         bool facet = false,
         string? facetFields = "",
         bool highlight = false,
-        string? highlightFields = "")
+        string? highlightFields = "",
+        string? filterQueries = "")
     {
-        if (_itemService == null)
-            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
 
         try
         {
-            var searchRequest = new ItemSearchRequest
+            var searchRequest = new AngleSearchRequest
             {
                 Query = query ?? "*:*",
                 Fields = fields ?? "*",
@@ -359,41 +356,46 @@ public sealed class AppserverTools(AppserverService appserverService, ItemServic
                 searchRequest.FacetFields = facetFields.Split(',').Select(f => f.Trim()).ToList();
             }
 
-            var result = await _itemService.SearchItemsAsync(searchRequest);
-            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemSearchResponse);
+            if (!string.IsNullOrEmpty(filterQueries))
+            {
+                searchRequest.FilterQueries = filterQueries.Split(',').Select(f => f.Trim()).ToList();
+            }
+
+            var result = await _angleService.SearchAnglesAsync(searchRequest);
+            return JsonSerializer.Serialize(result, AppserverContext.Default.AngleSearchResponse);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Error searching items: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Error searching angles: {ex.Message}" });
         }
     }
 
-    [McpServerTool, Description("Get a specific item by its unique identifier")]
-    public async Task<string> GetItemById(string itemId)
+    [McpServerTool, Description("Get a specific angle by its unique identifier")]
+    public async Task<string> GetAngleById(string angleId)
     {
-        if (_itemService == null)
-            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
 
-        if (string.IsNullOrWhiteSpace(itemId))
-            return JsonSerializer.Serialize(new { error = "Item ID is required" });
+        if (string.IsNullOrWhiteSpace(angleId))
+            return JsonSerializer.Serialize(new { error = "Angle ID is required" });
 
         try
         {
-            var item = await _itemService.GetItemByIdAsync(itemId);
-            if (item == null)
+            var angle = await _angleService.GetAngleByIdAsync(angleId);
+            if (angle == null)
             {
-                return JsonSerializer.Serialize(new { error = $"Item with ID '{itemId}' not found" });
+                return JsonSerializer.Serialize(new { error = $"Angle with ID '{angleId}' not found" });
             }
 
-            return JsonSerializer.Serialize(item, AppserverContext.Default.ItemDocument);
+            return JsonSerializer.Serialize(angle, AppserverContext.Default.AngleDocument);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Error retrieving item: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
         }
     }
-    [McpServerTool, Description("Filter items with advanced criteria including multiple field filters and date ranges")]
-    public async Task<string> FilterItems(
+    [McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
+    public async Task<string> FilterAngles(
         string? field = "",
         string? value = "",
         string? operator_ = "equals",
@@ -403,16 +405,16 @@ public sealed class AppserverTools(AppserverService appserverService, ItemServic
         int rows = 10,
         string? sort = "")
     {
-        if (_itemService == null)
-            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
 
         try
         {
-            var filters = new List<ItemFilterRequest>();
+            var filters = new List<AngleFilterRequest>();
 
             if (!string.IsNullOrEmpty(field) && !string.IsNullOrEmpty(value))
             {
-                filters.Add(new ItemFilterRequest
+                filters.Add(new AngleFilterRequest
                 {
                     Field = field,
                     Value = value,
@@ -422,28 +424,28 @@ public sealed class AppserverTools(AppserverService appserverService, ItemServic
                 });
             }
 
-            var result = await _itemService.FilterItemsAsync(filters, start, rows, sort ?? "");
-            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemSearchResponse);
+            var result = await _angleService.FilterAnglesAsync(filters, start, rows, sort ?? "");
+            return JsonSerializer.Serialize(result, AppserverContext.Default.AngleSearchResponse);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Error filtering items: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Error filtering angles: {ex.Message}" });
         }
     }
-    [McpServerTool, Description("Get comprehensive item statistics including counts, facets, and analytics data")]
-    public async Task<string> GetItemStatistics()
+    [McpServerTool, Description("Get comprehensive angle statistics including counts, facets, and analytics data")]
+    public async Task<string> GetAngleStatistics()
     {
-        if (_itemService == null)
-            return JsonSerializer.Serialize(new { error = "ItemService not initialized" });
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
 
         try
         {
-            var result = await _itemService.GetItemStatisticsAsync();
-            return JsonSerializer.Serialize(result, AppserverContext.Default.ItemStatisticsResponse);
+            var result = await _angleService.GetAngleStatisticsAsync();
+            return JsonSerializer.Serialize(result, AppserverContext.Default.AngleStatisticsResponse);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Error retrieving item statistics: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Error retrieving angle statistics: {ex.Message}" });
         }
     }
 }

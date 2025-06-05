@@ -12,7 +12,7 @@ builder.Services
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<AppserverService>();
 builder.Services.AddSingleton<IPlatformService, PlatformService>();
-builder.Services.AddSingleton<ItemService>();
+builder.Services.AddSingleton<AngleService>();
 
 var app = builder.Build();
 

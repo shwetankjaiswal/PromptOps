@@ -6,14 +6,14 @@ using System.Web;
 
 namespace AppserverMCP.Services
 {
-    public class ItemService
+    public class AngleService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILogger<ItemService> _logger;
+        private readonly ILogger<AngleService> _logger;
         private readonly IPlatformService _platformService;
         private readonly string _baseUrl;
 
-        public ItemService(IHttpClientFactory httpClientFactory, ILogger<ItemService> logger, IConfiguration configuration, IPlatformService platformService)
+        public AngleService(IHttpClientFactory httpClientFactory, ILogger<AngleService> logger, IConfiguration configuration, IPlatformService platformService)
         {
             _httpClient = httpClientFactory.CreateClient();
             _logger = logger;
@@ -22,7 +22,7 @@ namespace AppserverMCP.Services
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
-        public async Task<ItemSearchResponse?> SearchItemsAsync(ItemSearchRequest searchRequest)
+        public async Task<AngleSearchResponse?> SearchAnglesAsync(AngleSearchRequest searchRequest)
         {
             HttpResponseMessage? response = null;
             try
@@ -42,7 +42,7 @@ namespace AppserverMCP.Services
                 var jsonContent = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation("Raw API Response: {JsonContent}", jsonContent);
 
-                var searchResponse = await response.Content.ReadFromJsonAsync<ItemSearchResponse>(); if (searchResponse != null)
+                var searchResponse = await response.Content.ReadFromJsonAsync<AngleSearchResponse>(); if (searchResponse != null)
                 {
                     _logger.LogInformation("Successfully searched items. Found {Count} items", searchResponse.Header.Total);
                 }
@@ -71,14 +71,13 @@ namespace AppserverMCP.Services
             }
         }
 
-        public async Task<ItemDocument?> GetItemByIdAsync(string itemId)
+        public async Task<AngleDocument?> GetAngleByIdAsync(string angleId)
         {
-            HttpResponseMessage? response = null;
-            try
+            HttpResponseMessage? response = null; try
             {
-                var url = $"{_baseUrl}/api/items/{itemId}";
+                var url = $"{_baseUrl}/api/items/{angleId}";
 
-                _logger.LogInformation("Getting item by ID: {ItemId}", itemId);
+                _logger.LogInformation("Getting angle by ID: {AngleId}", angleId);
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 var accessToken = await _platformService.GetAccessTokenAsync();
@@ -88,38 +87,38 @@ namespace AppserverMCP.Services
                 response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
-                var item = await response.Content.ReadFromJsonAsync<ItemDocument>();
+                var angle = await response.Content.ReadFromJsonAsync<AngleDocument>();
 
-                if (item != null)
+                if (angle != null)
                 {
-                    _logger.LogInformation("Successfully retrieved item: {ItemId}", itemId);
+                    _logger.LogInformation("Successfully retrieved angle: {AngleId}", angleId);
                 }
 
-                return item;
+                return angle;
             }
             catch (HttpRequestException ex)
             {
                 var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
-                _logger.LogError(ex, "Failed to get item {ItemId} from Appserver: {ErrorResponse}", itemId, errorResponse);
+                _logger.LogError(ex, "Failed to get angle {AngleId} from Appserver: {ErrorResponse}", angleId, errorResponse);
                 return null;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "Request to get item {ItemId} timed out", itemId);
+                _logger.LogError(ex, "Request to get angle {AngleId} timed out", angleId);
                 return null;
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to parse item response from Appserver for item {ItemId}", itemId);
+                _logger.LogError(ex, "Failed to parse angle response from Appserver for angle {AngleId}", angleId);
                 return null;
             }
         }
 
-        public async Task<ItemSearchResponse?> FilterItemsAsync(List<ItemFilterRequest> filters, int start = 0, int rows = 10, string sort = "")
+        public async Task<AngleSearchResponse?> FilterAnglesAsync(List<AngleFilterRequest> filters, int start = 0, int rows = 10, string sort = "")
         {
             try
             {
-                var searchRequest = new ItemSearchRequest
+                var searchRequest = new AngleSearchRequest
                 {
                     Query = "*:*",
                     FilterQueries = BuildFilterQueries(filters),
@@ -128,7 +127,7 @@ namespace AppserverMCP.Services
                     Sort = sort
                 };
 
-                return await SearchItemsAsync(searchRequest);
+                return await SearchAnglesAsync(searchRequest);
             }
             catch (Exception ex)
             {
@@ -137,12 +136,11 @@ namespace AppserverMCP.Services
             }
         }
 
-        public async Task<ItemStatisticsResponse?> GetItemStatisticsAsync()
+        public async Task<AngleStatisticsResponse?> GetAngleStatisticsAsync()
         {
             try
-            {
-                // Get overall statistics by searching with facets
-                var searchRequest = new ItemSearchRequest
+            {                // Get overall statistics by searching with facets
+                var searchRequest = new AngleSearchRequest
                 {
                     Query = "*:*",
                     Rows = 0, // We only want facet data, not documents
@@ -150,10 +148,10 @@ namespace AppserverMCP.Services
                     FacetFields = new List<string> { "category", "status" }
                 };
 
-                var searchResponse = await SearchItemsAsync(searchRequest);
-                if (searchResponse?.FacetCounts == null) return null; var statistics = new ItemStatisticsResponse
+                var searchResponse = await SearchAnglesAsync(searchRequest);
+                if (searchResponse?.FacetCounts == null) return null; var statistics = new AngleStatisticsResponse
                 {
-                    TotalItems = searchResponse.Header.Total,
+                    TotalAngles = searchResponse.Header.Total,
                     LastUpdated = DateTime.UtcNow
                 };
 
@@ -169,20 +167,18 @@ namespace AppserverMCP.Services
                 {
                     var statusFacets = searchResponse.FacetCounts.FacetFields["status"];
                     statistics.StatusDistribution = ProcessFacetList(statusFacets);
-                }
-
-                // Get recent items count (last 30 days)
-                var recentFilter = new List<ItemFilterRequest>
+                }                // Get recent items count (last 30 days)
+                var recentFilter = new List<AngleFilterRequest>
                 {
-                    new ItemFilterRequest
+                    new AngleFilterRequest
                     {
                         Field = "created_date",
                         Operator = "range",
                         From = DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-ddTHH:mm:ssZ"),
                         To = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
                     }
-                }; var recentItemsResponse = await FilterItemsAsync(recentFilter, 0, 0);
-                statistics.RecentItems = (int)(recentItemsResponse?.Header.Total ?? 0);
+                }; var recentItemsResponse = await FilterAnglesAsync(recentFilter, 0, 0);
+                statistics.RecentAngles = (int)(recentItemsResponse?.Header.Total ?? 0);
 
                 return statistics;
             }
@@ -192,7 +188,7 @@ namespace AppserverMCP.Services
                 return null;
             }
         }
-        private string BuildQueryParameters(ItemSearchRequest searchRequest)
+        private string BuildQueryParameters(AngleSearchRequest searchRequest)
         {
             var parameters = new List<string>
             {
@@ -237,7 +233,7 @@ namespace AppserverMCP.Services
             return string.Join("&", parameters);
         }
 
-        private List<string> BuildFilterQueries(List<ItemFilterRequest> filters)
+        private List<string> BuildFilterQueries(List<AngleFilterRequest> filters)
         {
             var filterQueries = new List<string>();
 

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace AppserverMCP.Models
 {
-    public class ItemSearchRequest
+    public class AngleSearchRequest
     {
         [JsonPropertyName("q")]
         public string Query { get; set; } = "*:*";
@@ -34,17 +34,17 @@ namespace AppserverMCP.Models
         [JsonPropertyName("hl.fl")]
         public string HighlightFields { get; set; } = "";
     }
-    public class ItemSearchResponse
+    public class AngleSearchResponse
     {
         [JsonPropertyName("header")]
-        public ItemResponseHeader Header { get; set; } = new();
+        public AngleResponseHeader Header { get; set; } = new();
 
         [JsonPropertyName("items")]
-        public List<ItemDocument> Items { get; set; } = new();
+        public List<AngleDocument> Items { get; set; } = new();
 
         [JsonPropertyName("facets")]
         public List<FacetCategory> Facets { get; set; } = new(); [JsonPropertyName("sort_options")]
-        public List<ItemSortOption> SortOptions { get; set; } = new();
+        public List<AngleSortOption> SortOptions { get; set; } = new();
 
         [JsonPropertyName("advanced_filters")]
         public List<string> AdvancedFilters { get; set; } = new();
@@ -55,7 +55,7 @@ namespace AppserverMCP.Models
         [JsonPropertyName("highlighting")]
         public Dictionary<string, object>? Highlighting { get; set; }
     }
-    public class ItemResponseHeader
+    public class AngleResponseHeader
     {
         [JsonPropertyName("total")]
         public long Total { get; set; }
@@ -67,7 +67,7 @@ namespace AppserverMCP.Models
         public int Offset { get; set; }
     }
 
-    public class ItemDocument
+    public class AngleDocument
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
@@ -118,8 +118,7 @@ namespace AppserverMCP.Models
         [JsonPropertyName("facet_heatmaps")]
         public Dictionary<string, object> FacetHeatmaps { get; set; } = new();
     }
-
-    public class ItemFilterRequest
+    public class AngleFilterRequest
     {
         [JsonPropertyName("field")]
         public string Field { get; set; } = string.Empty;
@@ -137,17 +136,17 @@ namespace AppserverMCP.Models
         public string? To { get; set; }
     }
 
-    public class ItemStatisticsResponse
+    public class AngleStatisticsResponse
     {
-        [JsonPropertyName("total_items")]
-        public long TotalItems { get; set; }
+        [JsonPropertyName("total_angles")]
+        public long TotalAngles { get; set; }
 
         [JsonPropertyName("categories")]
         public Dictionary<string, int> Categories { get; set; } = new();
 
         [JsonPropertyName("status_distribution")]
-        public Dictionary<string, int> StatusDistribution { get; set; } = new(); [JsonPropertyName("recent_items")]
-        public int RecentItems { get; set; }
+        public Dictionary<string, int> StatusDistribution { get; set; } = new(); [JsonPropertyName("recent_angles")]
+        public int RecentAngles { get; set; }
 
         [JsonPropertyName("last_updated")]
         public DateTime LastUpdated { get; set; }
@@ -186,7 +185,7 @@ namespace AppserverMCP.Models
         [JsonPropertyName("count")]
         public int? Count { get; set; }
     }
-    public class ItemSortOption
+    public class AngleSortOption
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
