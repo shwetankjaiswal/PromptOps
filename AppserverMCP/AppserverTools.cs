@@ -30,4 +30,27 @@ public sealed class AppserverTools(AppserverService appserverService)
             return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
         }
     }
+
+    [McpServerTool, Description("Get user settings of the user from app server")]
+    public async Task<string> GetUserSettings()
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+          var userSettings = await _appserverService.GetUserSettings();
+            if (userSettings == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(userSettings, AppserverContext.Default.UserSettingsResponse);
+
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
+        }
+    }
 } 
