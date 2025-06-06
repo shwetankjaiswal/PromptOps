@@ -457,6 +457,45 @@ namespace AppserverMCP.Models
         public string RowId { get; set; } = string.Empty;
 
         [JsonPropertyName("field_values")]
-        public List<JsonElement> FieldValues { get; set; } = new();
+        public List<JsonElement> FieldValues { get; set; } = new();    }
+
+    // Model Classes Response Models
+    public class ModelClassesResponse
+    {
+        [JsonPropertyName("header")]
+        public AngleResponseHeader Header { get; set; } = new();
+
+        [JsonPropertyName("classes")]
+        public List<ModelClass> Classes { get; set; } = new();
+
+        [JsonPropertyName("facets")]
+        public List<FacetCategory> Facets { get; set; } = new();
+
+        [JsonPropertyName("sort_options")]
+        public List<AngleSortOption> SortOptions { get; set; } = new();
+    }
+
+    public class ModelClass
+    {
+        [JsonPropertyName("short_name")]
+        public string ShortName { get; set; } = string.Empty;
+
+        [JsonPropertyName("long_name")]
+        public string LongName { get; set; } = string.Empty;
+
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; } = string.Empty;
+
+        [JsonPropertyName("main_businessprocess")]
+        public string MainBusinessprocess { get; set; } = string.Empty;
+
+        [JsonPropertyName("helpid")]
+        public string HelpId { get; set; } = string.Empty;
+
+        [JsonPropertyName("helptext")]
+        public string HelpText { get; set; } = string.Empty;
     }
 }

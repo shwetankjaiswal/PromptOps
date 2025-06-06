@@ -9,6 +9,7 @@ namespace AppserverMCP;
 [McpServerToolType]
 public sealed class AppserverTools(AppserverService appserverService, AngleService angleService)
 {
+    private const int DelayBetweenRequestsMs = 100; // Delay in milliseconds between requests
     private AppserverService? _appserverService = appserverService;
     private AngleService? _angleService = angleService;
 
@@ -395,17 +396,13 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         {
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle: {ex.Message}" });
         }
-    }
-
-    [McpServerTool, Description("Get all angles or Get angle by search query if specified")]
-    public async Task<string> GetAngles(string query = null)
+    }    [McpServerTool, Description("Get all angles or Get angle by search query if specified")]
+    public async Task<string> GetAngles(string? query = null)
     {
         if (_angleService == null)
-            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
-
-        try
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });        try
         {
-            var angle = await _angleService.GetAngles(query);
+            var angle = await _angleService.GetAngles(query ?? "*:*");
 
             return JsonSerializer.Serialize(angle, AppserverContext.Default.AngleSearchResponse);
         }
@@ -683,7 +680,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
                     remaining -= nextBatch.Rows.Count;
 
                     // Add a small delay between requests to be gentle on the server
-                    await Task.Delay(100);
+                    await Task.Delay(DelayBetweenRequestsMs);
                 }
             }
 
@@ -747,10 +744,275 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
             }
 
             return JsonSerializer.Serialize(usersList, typeof(List<UserView>), AppserverContext.Default);
+        }        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving users list: {ex.Message}" });
+        }
+    }    [McpServerTool, Description("Get all classes for a specific model by model ID. Uses the URI from GetModels response to access model classes.")]
+    public async Task<string> GetModelClasses(
+        [Description("The model ID to get classes for")] string modelId,
+        [Description("Starting offset for pagination (default: 0)")] int offset = 0,
+        [Description("Number of classes to retrieve (default: 100, max: 1000)")] int limit = 100,
+        [Description("Comma-separated list of specific class IDs to retrieve (optional). If not provided, all classes will be returned.")] string? ids = null)
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(modelId))
+            return JsonSerializer.Serialize(new { error = "Model ID is required" });
+
+        if (offset < 0)
+            return JsonSerializer.Serialize(new { error = "Offset must be non-negative" });
+
+        if (limit <= 0 || limit > 1000)
+            return JsonSerializer.Serialize(new { error = "Limit must be between 1 and 1000" });
+
+        try
+        {
+            // First, get the model information to retrieve the URI
+            var modelsResponse = await _appserverService.GetModelsAsync(0, 1000); // Get all models to find the right one
+            if (modelsResponse == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve models information. The server may be unavailable." });
+            }
+
+            // Find the model by ID
+            var targetModel = modelsResponse.Models.FirstOrDefault(m => 
+                string.Equals(m.Id, modelId, StringComparison.OrdinalIgnoreCase));
+
+            if (targetModel == null)
+            {
+                return JsonSerializer.Serialize(new { 
+                    error = $"Model with ID '{modelId}' not found",
+                    available_models = modelsResponse.Models.Select(m => new { id = m.Id, short_name = m.ShortName }).ToList()
+                });
+            }
+
+            // Use the GetModelClassesByUri method which should use the model's URI
+            var modelClasses = await _appserverService.GetModelClassesByUriAsync(targetModel.Uri, offset, limit, ids);
+            if (modelClasses == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve model classes. The server may be unavailable or the model URI may be invalid." });
+            }            // Create beautiful tabular structure for model classes
+            var classesTable = modelClasses.Classes?.Select(c => new
+            {
+                // Basic Class Information
+                class_info = new
+                {
+                    class_id = c.Id,
+                    short_name = c.ShortName,
+                    long_name = c.LongName,
+                    uri = c.Uri,
+                    help_id = c.HelpId
+                },
+                
+                // Business Information
+                business_info = new
+                {
+                    main_businessprocess = c.MainBusinessprocess ?? "Not specified",
+                    help_text = !string.IsNullOrEmpty(c.HelpText) ? c.HelpText : "No help text available"
+                }
+            }).ToArray();
+
+            return JsonSerializer.Serialize(new
+            {
+                // Summary Header
+                summary = new
+                {
+                    title = $"📋 Classes for Model: {targetModel.ShortName}",
+                    timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC"),
+                    request_details = new
+                    {
+                        model_id = modelId,
+                        offset = offset,
+                        limit = limit,
+                        specific_ids = ids
+                    }
+                },
+                
+                // Model Context Table
+                model_context = new
+                {
+                    basic_info = new
+                    {
+                        id = targetModel.Id,
+                        short_name = targetModel.ShortName,
+                        full_name = targetModel.LongName,
+                        environment = targetModel.Environment,
+                        type = targetModel.Type,
+                        uri = targetModel.Uri
+                    },
+                    status = new
+                    {
+                        refresh_enabled = targetModel.UseRefresh ? "✓ Yes" : "✗ No",
+                        postprocessing = targetModel.IsPostprocessing ? "🔄 Active" : "⭕ Inactive"
+                    }
+                },
+                
+                // Classes Summary Statistics
+                classes_statistics = new
+                {
+                    overview = new
+                    {
+                        total_available = modelClasses.Header.Total,
+                        returned_count = modelClasses.Classes?.Count ?? 0,
+                        offset = modelClasses.Header.Offset,
+                        limit = modelClasses.Header.Limit
+                    },
+                    breakdown = new
+                    {
+                        classes_with_help = modelClasses.Classes?.Count(c => !string.IsNullOrEmpty(c.HelpText)) ?? 0,
+                        classes_with_business_process = modelClasses.Classes?.Count(c => !string.IsNullOrEmpty(c.MainBusinessprocess)) ?? 0,
+                        classes_with_help_id = modelClasses.Classes?.Count(c => !string.IsNullOrEmpty(c.HelpId)) ?? 0
+                    }
+                },
+                
+                // Main Classes Table
+                classes_table = classesTable
+            });
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = $"Error retrieving users list: {ex.Message}" });
+            return JsonSerializer.Serialize(new { error = $"Error retrieving model classes: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get all available models with detailed information including authorizations, environment, active languages, and created information")]
+    public async Task<string> GetModels(
+        [Description("Starting offset for pagination (default: 0)")] int offset = 0,
+        [Description("Number of models to retrieve (default: 100, max: 1000)")] int limit = 100)
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        if (offset < 0)
+            return JsonSerializer.Serialize(new { error = "Offset must be non-negative" });
+
+        if (limit <= 0 || limit > 1000)
+            return JsonSerializer.Serialize(new { error = "Limit must be between 1 and 1000" });
+
+        try
+        {
+            var modelsResponse = await _appserverService.GetModelsAsync(offset, limit);
+            if (modelsResponse == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve models. The server may be unavailable." });
+            }            // Create a beautiful tabular structure for model data
+            var modelsTable = modelsResponse.Models.Select(m => new
+            {
+                // Basic Information Table
+                basic_info = new
+                {
+                    model_id = m.Id,
+                    short_name = m.ShortName,
+                    full_name = m.LongName,
+                    abbreviation = m.Abbreviation,
+                    environment = m.Environment,
+                    type = m.Type,
+                    uri = m.Uri
+                },
+                
+                // Status & Configuration Table
+                status_config = new
+                {
+                    refresh_enabled = m.UseRefresh ? "✓ Yes" : "✗ No",
+                    postprocessing_active = m.IsPostprocessing ? "🔄 Active" : "⭕ Inactive",
+                    switch_when_postprocessing = m.SwitchWhenPostprocessing ? "✓ Enabled" : "✗ Disabled",
+                    active_languages = m.ActiveLanguages?.Count > 0 ? string.Join(", ", m.ActiveLanguages) : "None",
+                    language_count = m.ActiveLanguages?.Count ?? 0
+                },
+                
+                // Creation Details Table
+                creation_info = new
+                {
+                    created_by = m.Created.FullName,
+                    creator_username = m.Created.User,
+                    created_date = DateTimeOffset.FromUnixTimeSeconds(m.Created.DateTime).ToString("yyyy-MM-dd"),
+                    created_time = DateTimeOffset.FromUnixTimeSeconds(m.Created.DateTime).ToString("HH:mm:ss UTC"),
+                    created_timestamp = m.Created.DateTime
+                },
+                
+                // Permissions Table
+                permissions = new
+                {
+                    data_access = m.Authorizations.AccessData ? "✓" : "✗",
+                    update_model = m.Authorizations.Update ? "✓" : "✗",
+                    delete_model = m.Authorizations.Delete ? "✓" : "✗",
+                    create_angles = m.Authorizations.CreateAngle ? "✓" : "✗",
+                    publish_dashboards = m.Authorizations.PublishDashboard ? "✓" : "✗",
+                    manage_settings = m.Authorizations.ManageSettings ? "✓" : "✗",
+                    manage_roles = m.Authorizations.ManageRoles ? "✓" : "✗",
+                    assign_roles = m.Authorizations.AssignRoles ? "✓" : "✗"
+                },
+                  // Technical Details Table
+                technical_info = new
+                {
+                    packages_info = !string.IsNullOrEmpty(m.Packages) ? m.Packages : "No packages specified",
+                    modelserver_settings = !string.IsNullOrEmpty(m.ModelserverSettings) ? m.ModelserverSettings : "Default settings"
+                }
+            }).ToList();// Enhanced statistics with tabular presentation
+            var enhancedStatistics = new
+            {
+                overview = new
+                {
+                    total_models = modelsResponse.Header.Total,
+                    models_returned = modelsResponse.Models.Count,
+                    offset = modelsResponse.Header.Offset,
+                    limit = modelsResponse.Header.Limit
+                },
+                
+                feature_breakdown = new
+                {
+                    refresh_enabled = modelsResponse.Models.Count(m => m.UseRefresh),
+                    refresh_disabled = modelsResponse.Models.Count(m => !m.UseRefresh),
+                    postprocessing_active = modelsResponse.Models.Count(m => m.IsPostprocessing),
+                    postprocessing_inactive = modelsResponse.Models.Count(m => !m.IsPostprocessing)
+                },
+                
+                distribution_tables = new
+                {
+                    by_type = modelsResponse.Models
+                        .GroupBy(m => m.Type ?? "Unknown")
+                        .Select(g => new { type = g.Key, count = g.Count() })
+                        .OrderByDescending(x => x.count)
+                        .ToList(),
+                        
+                    by_environment = modelsResponse.Models
+                        .GroupBy(m => m.Environment ?? "Unknown")
+                        .Select(g => new { environment = g.Key, count = g.Count() })
+                        .OrderByDescending(x => x.count)
+                        .ToList(),
+                        
+                    language_usage = modelsResponse.Models
+                        .Where(m => m.ActiveLanguages != null && m.ActiveLanguages.Any())
+                        .SelectMany(m => m.ActiveLanguages)
+                        .GroupBy(lang => lang)
+                        .Select(g => new { language = g.Key, model_count = g.Count() })
+                        .OrderByDescending(x => x.model_count)
+                        .ToList()
+                }
+            };
+
+            return JsonSerializer.Serialize(new
+            {
+                // Summary Header
+                summary = new
+                {
+                    title = "📊 Models Overview",
+                    timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC"),
+                    pagination = enhancedStatistics.overview
+                },
+                
+                // Enhanced Statistics Tables
+                statistics = enhancedStatistics,
+                
+                // Main Models Table
+                models_table = modelsTable
+            });
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving models: {ex.Message}" });
         }
     }
 }

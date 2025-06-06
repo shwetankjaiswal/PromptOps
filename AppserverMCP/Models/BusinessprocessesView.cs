@@ -9,10 +9,8 @@ namespace AppserverMCP.Models
         public Header Header { get; set; } = new();
 
         [JsonPropertyName("business_processes")]
-        public List<BusinessProcess> BusinessProcesses { get; set; } = new();
-
-        [JsonPropertyName("sort_options")]
-        public List<SortOption> SortOptions { get; set; } = new();
+        public List<BusinessProcess> BusinessProcesses { get; set; } = new();        [JsonPropertyName("sort_options")]
+        public List<BusinessProcessSortOption> SortOptions { get; set; } = new();
     }
 
     public class Header
@@ -51,10 +49,9 @@ namespace AppserverMCP.Models
         public bool IsAllowed { get; set; }
 
         [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
-    }
+        public string Name { get; set; } = string.Empty;    }
 
-    public class SortOption
+    public class BusinessProcessSortOption
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
