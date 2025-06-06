@@ -223,6 +223,86 @@ namespace AppserverMCP.Services
             }
         }
 
+        public async Task<AngleSearchResponse?> GetDashboards(string query)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                var url = $"{_baseUrl}/items?{(string.IsNullOrEmpty(query) ? null : $"q={query}&")}fq=facetcat_itemtype:(facet_dashboard)&caching=false&viewmode=basic";
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var angle = await response.Content.ReadFromJsonAsync<AngleSearchResponse>();
+
+                if (angle != null)
+                {
+                    _logger.LogInformation("Successfully retrieved angles based on query: {Query}", query);
+                }
+
+                return angle;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse angle response from Appserver for search query {Query}", query);
+                return null;
+            }
+        }
+
+        public async Task<DashboardResponse?> GetDashboardByUri(string dashboardUri)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                // The URI is expected to be in format like "/dashboards/20"
+                var url = dashboardUri.StartsWith("/") ? $"{_baseUrl}{dashboardUri}" : $"{_baseUrl}/{dashboardUri}";
+
+                _logger.LogInformation("Getting dashboard from: {Url}", url);
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var dashboardResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.DashboardResponse);
+
+                if (dashboardResponse != null)
+                {
+                    _logger.LogInformation("Successfully retrieved dashboard. Widget count: {WidgetCount}", 
+                        dashboardResponse.WidgetDefinitions.Count);
+                }
+
+                return dashboardResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
+                _logger.LogError(ex, "Failed to get dashboard from {DashboardUri}: {ErrorResponse}", 
+                    dashboardUri, errorResponse);
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Request to get dashboard from {DashboardUri} timed out", 
+                    dashboardUri);
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse dashboard response from {DashboardUri}", 
+                    dashboardUri);
+                return null;
+            }
+        }
+
         public async Task<ExecuteAngleDisplayResponse?> ExecuteAngleDisplay(int modelId, int angleId, int displayId)
         {
             HttpResponseMessage? response = null;
@@ -401,6 +481,55 @@ namespace AppserverMCP.Services
             {
                 _logger.LogError(ex, "Failed to parse data rows response from {DataRowsUri}", 
                     dataRowsUri);
+                return null;
+            }
+        }
+
+        public async Task<DataFieldsResponse?> GetDataFields(string dataFieldsUri)
+        {
+            HttpResponseMessage? response = null;
+            try
+            {
+                // The dataFieldsUri is expected to be in format like "/results/69/data_fields"
+                var url = dataFieldsUri.StartsWith("/") ? $"{_baseUrl}{dataFieldsUri}" : $"{_baseUrl}/{dataFieldsUri}";
+
+                _logger.LogInformation("Getting data fields from: {Url}", url);
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var accessToken = await _platformService.GetAccessTokenAsync();
+                request.Headers.Add("A4SAuthorization", accessToken);
+                request.Headers.Add("ROPC", "true");
+
+                response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var dataFieldsResponse = await response.Content.ReadFromJsonAsync(AppserverContext.Default.DataFieldsResponse);
+
+                if (dataFieldsResponse != null)
+                {
+                    _logger.LogInformation("Successfully retrieved data fields. Total: {Total}", 
+                        dataFieldsResponse.Header.Total);
+                }
+
+                return dataFieldsResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = response?.Content != null ? await response.Content.ReadAsStringAsync() : "No response content";
+                _logger.LogError(ex, "Failed to get data fields from {DataFieldsUri}: {ErrorResponse}", 
+                    dataFieldsUri, errorResponse);
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Request to get data fields from {DataFieldsUri} timed out", 
+                    dataFieldsUri);
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse data fields response from {DataFieldsUri}", 
+                    dataFieldsUri);
                 return null;
             }
         }
