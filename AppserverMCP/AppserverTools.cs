@@ -415,6 +415,66 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
 
+    [McpServerTool, Description("Get user settings of the user from app server and takes user's name as input")]
+    public async Task<string> GetUserSettings(string username)
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+            var allUsers = await _appserverService.GetAllUser();
+            string? uri = allUsers?.FirstOrDefault(u => u.FullName.Equals(username, StringComparison.OrdinalIgnoreCase)).Uri;
+            if (uri == null)
+            {
+                return JsonSerializer.Serialize(new { error = "user doesn't exist. please specify exact name" });
+            }
+
+            var userSettings = await _appserverService.GetUserSettingsAsync(uri);
+            if (userSettings == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(userSettings, AppserverContext.Default.UserSettingsResponse);
+
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("updates user settings such as default Currency and takes user name and default Currency as input to be updated")]
+    public async Task<string> UpdateUserCurrency(string username, string defaultCurrency)
+    {
+        if (_appserverService == null)
+            return JsonSerializer.Serialize(new { error = "AppserverService not initialized" });
+
+        try
+        {
+            var allUsers = await _appserverService.GetAllUser();
+            string? uri = allUsers?.FirstOrDefault(u => u.FullName.Equals(username, StringComparison.OrdinalIgnoreCase)).Uri;
+            if (uri == null)
+            {
+                return JsonSerializer.Serialize(new { error = "user doesn't exist. please specify exact name" });
+            }
+
+            var userSettings = await _appserverService.PutUserCurrencyAsync(uri, defaultCurrency);
+            if (!userSettings)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve Appserver information. The server may be unavailable." });
+            }
+
+            return $"{defaultCurrency} updated for {username}";
+
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
+        }
+    }
+
     //[McpServerTool, Description("Filter angles with advanced criteria including multiple field filters and date ranges")]
     public async Task<string> FilterAngles(
         string? field = "",
