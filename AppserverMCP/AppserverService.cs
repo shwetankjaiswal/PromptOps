@@ -271,7 +271,7 @@ public class AppserverService
         {
             _logger.LogInformation("Fetching tasks list from {BaseUrl}/tasks", _baseUrl);
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/tasks");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/tasks?types=export_angle_to_datastore");
             var accessToken = await _platformService.GetAccessTokenAsync();
             request.Headers.Add("A4SAuthorization", accessToken);
             request.Headers.Add("ROPC", "true");
