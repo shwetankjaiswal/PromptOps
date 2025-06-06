@@ -324,7 +324,7 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         }
     }
     // AngleController MCP Tools
-    //[McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
+    // [McpServerTool, Description("Search for angles using Solr with flexible query parameters including filters, sorting, and pagination")]
     public async Task<string> SearchAngles(
         string? query = "*:*",
         string? fields = "*",
@@ -439,6 +439,50 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Error retrieving Appserver information: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get all dashboards or Get dashboard by search query if specified")]
+    public async Task<string> GetDashboards(string query = null)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        try
+        {
+            var angle = await _angleService.GetDashboards(query);
+
+            return JsonSerializer.Serialize(angle, AppserverContext.Default.AngleSearchResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving dashboards: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get dashboard details by its URI, which includes widget definitions with angle and display references. It can be used by AnglesDisplayExecute tool to execute them for results")]
+    public async Task<string> GetDashboardByUri(
+        [Description("Dashboard URI from GetDashboards response (e.g., '/dashboards/20')")] string dashboardUri)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(dashboardUri))
+            return JsonSerializer.Serialize(new { error = "Dashboard URI is required (e.g., '/dashboards/20' from GetDashboards response)" });
+
+        try
+        {
+            var result = await _angleService.GetDashboardByUri(dashboardUri);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve dashboard. The URI may be invalid or the server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.DashboardResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving dashboard: {ex.Message}" });
         }
     }
 
@@ -585,6 +629,32 @@ public sealed class AppserverTools(AppserverService appserverService, AngleServi
         catch (Exception ex)
         {
             return JsonSerializer.Serialize(new { error = $"Error retrieving angle display execution status: {ex.Message}" });
+        }
+    }
+
+    [McpServerTool, Description("Get data fields information for an angle display execution result")]
+    public async Task<string> GetAngleDisplayDataFields(
+        [Description("Data fields URI from the execution status response (e.g., '/results/69/data_fields' from the data_fields property)")] string dataFieldsUri)
+    {
+        if (_angleService == null)
+            return JsonSerializer.Serialize(new { error = "AngleService not initialized" });
+
+        if (string.IsNullOrWhiteSpace(dataFieldsUri))
+            return JsonSerializer.Serialize(new { error = "Data fields URI is required (e.g., '/results/69/data_fields' from execution status response)" });
+
+        try
+        {
+            var result = await _angleService.GetDataFields(dataFieldsUri);
+            if (result == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Failed to retrieve data fields. The URI may be invalid or the server may be unavailable." });
+            }
+
+            return JsonSerializer.Serialize(result, AppserverContext.Default.DataFieldsResponse);
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new { error = $"Error retrieving data fields: {ex.Message}" });
         }
     }
 

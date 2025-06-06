@@ -498,4 +498,195 @@ namespace AppserverMCP.Models
         [JsonPropertyName("helptext")]
         public string HelpText { get; set; } = string.Empty;
     }
+
+    // Models for Dashboard functionality
+    public class DashboardResponse
+    {
+        [JsonPropertyName("multi_lang_name")]
+        public List<MultiLangText> MultiLangName { get; set; } = new();
+
+        [JsonPropertyName("multi_lang_description")]
+        public List<MultiLangText> MultiLangDescription { get; set; } = new();
+
+        [JsonPropertyName("changed")]
+        public AngleCreatedInfo Changed { get; set; } = new();
+
+        [JsonPropertyName("executed")]
+        public AngleCreatedInfo Executed { get; set; } = new();
+
+        [JsonPropertyName("user_specific")]
+        public DashboardUserSpecific UserSpecific { get; set; } = new();
+
+        [JsonPropertyName("widget_definitions")]
+        public List<WidgetDefinition> WidgetDefinitions { get; set; } = new();
+
+        [JsonPropertyName("filters")]
+        public List<JsonElement> Filters { get; set; } = new();
+
+        [JsonPropertyName("widgets")]
+        public string Widgets { get; set; } = string.Empty;
+
+        [JsonPropertyName("layout")]
+        public string Layout { get; set; } = string.Empty;
+
+        [JsonPropertyName("assigned_labels")]
+        public List<string> AssignedLabels { get; set; } = new();
+
+        [JsonPropertyName("assigned_tags")]
+        public List<string> AssignedTags { get; set; } = new();
+
+        [JsonPropertyName("privilege_labels")]
+        public string PrivilegeLabels { get; set; } = string.Empty;
+
+        [JsonPropertyName("grouping_labels")]
+        public string GroupingLabels { get; set; } = string.Empty;
+
+        [JsonPropertyName("labels")]
+        public string Labels { get; set; } = string.Empty;
+
+        [JsonPropertyName("business_processes")]
+        public string BusinessProcesses { get; set; } = string.Empty;
+
+        [JsonPropertyName("angles")]
+        public string Angles { get; set; } = string.Empty;
+
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; } = string.Empty;
+
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = string.Empty;
+
+        [JsonPropertyName("is_validated")]
+        public bool IsValidated { get; set; }
+
+        [JsonPropertyName("is_published")]
+        public bool IsPublished { get; set; }
+
+        [JsonPropertyName("created")]
+        public AngleCreatedInfo Created { get; set; } = new();
+
+        [JsonPropertyName("state")]
+        public string State { get; set; } = string.Empty;
+
+        [JsonPropertyName("has_warnings")]
+        public bool HasWarnings { get; set; }
+
+        [JsonPropertyName("authorizations")]
+        public DashboardAuthorizations Authorizations { get; set; } = new();
+
+        [JsonPropertyName("is_parameterized")]
+        public bool IsParameterized { get; set; }
+    }
+
+    public class MultiLangText
+    {
+        [JsonPropertyName("lang")]
+        public string Lang { get; set; } = string.Empty;
+
+        [JsonPropertyName("text")]
+        public string Text { get; set; } = string.Empty;
+    }
+
+    public class DashboardUserSpecific
+    {
+        [JsonPropertyName("execute_on_login")]
+        public bool ExecuteOnLogin { get; set; }
+
+        [JsonPropertyName("is_starred")]
+        public bool IsStarred { get; set; }
+    }
+
+    public class WidgetDefinition
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; } = string.Empty;
+
+        [JsonPropertyName("widget_details")]
+        public string WidgetDetails { get; set; } = string.Empty;
+
+        [JsonPropertyName("widget_type")]
+        public string WidgetType { get; set; } = string.Empty;
+
+        [JsonPropertyName("angle")]
+        public string Angle { get; set; } = string.Empty;
+
+        [JsonPropertyName("display")]
+        public string Display { get; set; } = string.Empty;
+
+        [JsonPropertyName("multi_lang_name")]
+        public List<MultiLangText> MultiLangName { get; set; } = new();
+
+        [JsonPropertyName("multi_lang_description")]
+        public List<MultiLangText> MultiLangDescription { get; set; } = new();
+    }
+
+    public class DashboardAuthorizations
+    {
+        [JsonPropertyName("update")]
+        public bool Update { get; set; }
+
+        [JsonPropertyName("delete")]
+        public bool Delete { get; set; }
+
+        [JsonPropertyName("publish")]
+        public bool Publish { get; set; }
+
+        [JsonPropertyName("unpublish")]
+        public bool Unpublish { get; set; }
+
+        [JsonPropertyName("validate")]
+        public bool Validate { get; set; }
+
+        [JsonPropertyName("unvalidate")]
+        public bool Unvalidate { get; set; }
+    }
+
+    // Models for Data Fields functionality
+    public class DataFieldsResponse
+    {
+        [JsonPropertyName("header")]
+        public DataFieldsHeader Header { get; set; } = new();
+
+        [JsonPropertyName("fields")]
+        public List<DataField> Fields { get; set; } = new();
+    }
+
+    public class DataFieldsHeader
+    {
+        [JsonPropertyName("total")]
+        public int Total { get; set; }
+
+        [JsonPropertyName("limit")]
+        public int Limit { get; set; }
+
+        [JsonPropertyName("offset")]
+        public int Offset { get; set; }
+    }
+
+    public class DataField
+    {
+        [JsonPropertyName("short_name")]
+        public string ShortName { get; set; } = string.Empty;
+
+        [JsonPropertyName("long_name")]
+        public string LongName { get; set; } = string.Empty;
+
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonPropertyName("fieldtype")]
+        public string FieldType { get; set; } = string.Empty;
+
+        [JsonPropertyName("source")]
+        public string? Source { get; set; }
+
+        [JsonPropertyName("domain")]
+        public string? Domain { get; set; }
+    }
 }
